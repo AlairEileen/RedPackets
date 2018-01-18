@@ -1,0 +1,170 @@
+﻿@using RedPackets.Views;
+@model RedPackets.Models.ManageViewModel
+@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+    ViewConst.SetRoutType(ViewData, RoutType.系统管理);
+}
+<div class="jumbotron">
+    <h1>@RoutType.系统管理.ToString()</h1>
+</div>
+<h2>设置七牛云信息</h2>
+<h6>
+    注意：<label class="text-danger">
+        存储空间必须是公开的，域名必须加上前缀（列：http://p20mykfl0.bkt.clouddn.com）
+    </label><a href="https://www.qiniu.com" class="btn btn-link">点此注册</a>
+</h6>
+<hr />
+<div class="row">
+    <div class="col-sm-3 col-xs-6">
+        <input class="form-control" id="bucket" value="@Model.QiNiuModel.Bucket" type="text" placeholder="填写储存空间名称" />
+    </div>
+    <div class="col-sm-3 col-xs-6">
+        <input class="form-control" id="doMain" value="@Model.QiNiuModel.DoMain" type="text" placeholder="填写储存空间对应域名" />
+    </div>
+    <div class="col-sm-3 col-xs-6">
+        <input class="form-control" id="accessKey" value="@Model.QiNiuModel.AccessKey" type="text" placeholder="填写密钥 AccessKey" />
+    </div>
+    <div class="col-sm-3 col-xs-6">
+        <input class="form-control" id="secretKey" value="@Model.QiNiuModel.SecretKey" type="text" placeholder="填写密钥 SecretKey" />
+    </div>
+
+</div>
+<br />
+<div class="row">
+    <div class="col-xs-6 col-sm-3 pull-right">
+        <button class="btn btn-primary col-xs-12" onclick="setQiNiu()">提交七牛云信息设置</button>
+    </div>
+</div>
+<br />
+<br />
+<h2>小程序交易设置</h2>
+<hr />
+<div class="row">
+    <div class="col-sm-4 col-xs-6">
+        <label>设置服务费率</label>
+    </div>
+    <div class="col-sm-4 col-xs-6">
+        <input class="form-control" id="serviceRate" value="@Model.ServiceRate" type="text" placeholder="填写服务费率" />
+    </div>
+    <div class="col-sm-4 col-xs-6">
+        <button class="btn btn-primary" onclick="setServiceRate()">提交服务费率设置</button>
+    </div>
+</div>
+<hr />
+<div class="row">
+    <div class="col-sm-3 col-xs-6">
+        <label>证书上传</label>
+    </div>
+    <div class="col-sm-3 col-xs-6">
+        <input type="file" onchange="loadFile(this)" class="hidden" id="certFile" />
+        <div class="input-append">
+            <a class="btn btn-default" onclick="$('input[id=certFile]').click();">选择 商户证书</a>
+            <span>未选择（必须选择）</span>
+        </div>
+    </div>
+    <div class="col-sm-3 col-xs-6">
+        <label class='modal-content @(Model.UploadedCert?"text-info":"text-danger")' id="certLabel">@(Model.UploadedCert ? "已上传" : "未上传")</label>
+    </div>
+    <div class="col-sm-3 col-xs-6">
+        <button class="btn btn-primary" onclick="uploadCert()">提交证书</button>
+    </div>
+
+</div>
+<br />
+<br />
+<h2>小程序管理</h2>
+<hr />
+<div class="row">
+    <div class="col-sm-6 col-xs-3">
+        <a class="btn btn-primary" href="manage/ProcessMiniZipDownload">点击下载小程序包</a>
+    </div>
+</div>
+<br />
+<br />
+<script>
+    function uploadCert() {
+        var planGoodsListPic = $("#certFile").get(0);
+        var files = planGoodsListPic.files;
+        var data = new FormData();
+        for (var i = 0; i < files.length; i++) {
+            data.append(files[i].name, files[i]);
+        }
+        $.ajax({
+            type: "POST",
+            url: "@Context.Request.PathBase/Merchant/PushCert",
+            contentType: false,
+            processData: false,
+            data: data,
+            success: function (message) {
+                var data = JSON.parse(message);
+                if (data.StatusCode == @((int)Tools.ActionParams.code_ok)) {
+                            alert("设置成功");
+                         } else {
+                           alert("设置失败");
+                         }
+            },
+            error: function () {
+                alert("There was error uploading files!");
+            }
+        });
+    }
+
+
+    function setQiNiu() {
+        var bucket = $("#bucket").val();
+        var doMain = $("#doMain").val();
+        var accessKey = $("#accessKey").val();
+        var secretKey = $("#secretKey").val();
+        var json = {
+            AccessKey: accessKey,
+            SecretKey: secretKey,
+            Bucket: bucket,
+            DoMain: doMain
+        };
+         $.ajax({
+                    type: "post",
+                    url: "@Context.Request.PathBase/Merchant/SetQiNiu",
+                    contentType: "application/json; charset=utf-8",
+                    data: JSON.stringify(json),
+                    dataType: "json",
+                    success: function (message) {
+                       if (message.StatusCode == @((int)Tools.ActionParams.code_ok)) {
+                            alert("设置成功");
+                         } else {
+                           alert("设置失败");
+                         }
+                    },
+                    error: function (message) {
+                        alert("设置失败");
+                    }
+                });
+
+
+    }
+
+    function loadFile(o, maxLength) {
+        if (maxLength != undefined && o.files.length > maxLength) {
+            alert("最多可以选择" + maxLength + "张");
+            return;
+        }
+        var text = o.files.length == 1 ? o.files[0].name : o.files.length + "张图片";
+        $(o).next().find("span").html(text);
+    }
+    function setServiceRate() {
+        var serviceRate = $("#serviceRate").val();
+        if ($.trim(serviceRate).length == 0) {
+            return;
+        }
+        $.getJSON("@Context.Request.PathBase/Merchant/SetServiceRate", { serviceRate: serviceRate}, function (data, status) {
+             if (data.StatusCode == @((int)Tools.ActionParams.code_ok)) {
+                            alert("设置成功");
+                         } else {
+                           alert("设置失败");
+                         }
+         });
+    }
+
+
+</script>
