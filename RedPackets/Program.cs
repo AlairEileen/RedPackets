@@ -7,6 +7,7 @@ using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using RedPackets.Managers;
 
 namespace RedPackets
 {
@@ -14,6 +15,7 @@ namespace RedPackets
     {
         public static void Main(string[] args)
         {
+            FileCleaner.Start();
             BuildWebHost(args).Run();
         }
 

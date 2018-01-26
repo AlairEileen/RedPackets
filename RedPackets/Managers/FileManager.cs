@@ -42,7 +42,7 @@ namespace RedPackets.Managers
     {
         private static FileCleaner fileCleaner;
         private static Timer cleanTimer;
-        private static int hour = 13, minie = 41;
+        private static int hour = 11, minie = 50;
 
         private FileCleaner()
         {
@@ -53,10 +53,7 @@ namespace RedPackets.Managers
             DateTime dt = DateTime.Now;
             if (dt.Hour == hour && dt.Minute == minie)
             {
-                System.IO.Directory.Delete(MainConfig.TempDir, true);
-                System.IO.Directory.Delete(MainConfig.BaseDir + MainConfig.GoodsImagesDir, true);
-                System.IO.Directory.Delete(MainConfig.BaseDir + MainConfig.LogoImagesDir, true);
-                System.IO.Directory.Delete(MainConfig.BaseDir + MainConfig.AlbumDir, true);
+                System.IO.Directory.Delete(MainConfig.BaseDir+ MainConfig.TempDir, true);
             }
         }
 

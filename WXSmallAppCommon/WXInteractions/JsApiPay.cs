@@ -29,13 +29,13 @@ namespace WXSmallAppCommon.WXInteractions
         /// <param name="appID"></param>
         /// <param name="mchID"></param>
         /// <returns>统一下单结果</returns>
-        public WxPayData GetUnifiedOrderResult(string body, string attach, string goods_tag, string appID = WxPayConfig.APPID, string mchID = WxPayConfig.MCHID)
+        public WxPayData GetUnifiedOrderResult(string body, string attach, string goods_tag, string appID = WxPayConfig.APPID, string mchID = WxPayConfig.MCHID,string key=WxPayConfig.KEY)
         {
             //统一下单
             WxPayData data = new WxPayData();
             data.SetValue("body", body);
             data.SetValue("attach", attach);
-            data.SetValue("out_trade_no", WxPayApi.GenerateOutTradeNo());
+            data.SetValue("out_trade_no", WxPayApi.GenerateOutTradeNo(mchID));
             data.SetValue("total_fee", total_fee);
             data.SetValue("time_start", DateTime.Now.ToString("yyyyMMddHHmmss"));
             data.SetValue("time_expire", DateTime.Now.AddMinutes(10).ToString("yyyyMMddHHmmss"));
@@ -43,7 +43,7 @@ namespace WXSmallAppCommon.WXInteractions
             data.SetValue("trade_type", "JSAPI");
             data.SetValue("openid", openid);
 
-            WxPayData result = WxPayApi.UnifiedOrder(data, 6, appID, mchID);
+            WxPayData result = WxPayApi.UnifiedOrder(data, 6, appID, mchID,key);
             if (!result.IsSet("appid") || !result.IsSet("prepay_id") || result.GetValue("prepay_id").ToString() == "")
             {
                 Log.Error(this.GetType().ToString(), "UnifiedOrder response error!");
@@ -70,7 +70,7 @@ namespace WXSmallAppCommon.WXInteractions
         * 更详细的说明请参考网页端调起支付API：http://pay.weixin.qq.com/wiki/doc/api/jsapi.php?chapter=7_7
         * 
         */
-        public string GetJsApiParameters()
+        public string GetJsApiParameters(string key =WxPayConfig.KEY)
         {
             Log.Debug(this.GetType().ToString(), "JsApiPay::GetJsApiParam is processing...");
 
@@ -80,7 +80,7 @@ namespace WXSmallAppCommon.WXInteractions
             jsApiParam.SetValue("nonceStr", WxPayApi.GenerateNonceStr());
             jsApiParam.SetValue("package", "prepay_id=" + unifiedOrderResult.GetValue("prepay_id"));
             jsApiParam.SetValue("signType", "MD5");
-            jsApiParam.SetValue("paySign", jsApiParam.MakeSign());
+            jsApiParam.SetValue("paySign", jsApiParam.MakeSign(key));
 
             string parameters = jsApiParam.ToJson();
 

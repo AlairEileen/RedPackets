@@ -455,7 +455,7 @@ namespace WXSmallAppCommon.WXTool
             int timeCost = (int)((end - start).TotalMilliseconds);
 
             WxPayData result = new WxPayData();
-            result.FromXml(response);
+            result.FromXml(response,key);
 
             ReportCostTime(url, timeCost, result);//测速上报
 
@@ -631,10 +631,10 @@ namespace WXSmallAppCommon.WXTool
         * 根据当前系统时间加随机序列来生成订单号
          * @return 订单号
         */
-        public static string GenerateOutTradeNo()
+        public static string GenerateOutTradeNo(string mchid = WxPayConfig.MCHID)
         {
             var ran = new Random();
-            return string.Format("{0}{1}{2}", WxPayConfig.MCHID, DateTime.Now.ToString("yyyyMMddHHmmss"), ran.Next(999));
+            return string.Format("{0}{1}{2}", mchid, DateTime.Now.ToString("yyyyMMddHHmmss"), ran.Next(999));
         }   
 
         /**

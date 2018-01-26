@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -48,7 +49,21 @@ namespace RedPackets.Controllers
             WxPayData data = new WxPayData();
             try
             {
-                data.FromXml(bodyString);
+        SortedDictionary<string, object> m_values = new SortedDictionary<string, object>();
+
+        XmlDocument xmlDoc = new XmlDocument();
+                xmlDoc.LoadXml(bodyString);
+                XmlNode xmlNode = xmlDoc.FirstChild;//获取到根节点<xml>
+                XmlNodeList nodes = xmlNode.ChildNodes;
+                foreach (XmlNode xn in nodes)
+                {
+                    XmlElement xe = (XmlElement)xn;
+                    m_values[xe.Name] = xe.InnerText;//获取xml的键值对到WxPayData内部的数据中
+                }
+
+                string[] aa = m_values["attach"].ToString().Split(',');
+            string key=    We7Tools.Models.We7ProcessMiniConfig.GetAllConfig(aa[0]).KEY;
+                data.FromXml(bodyString,key);
                 OnPaySuccess(data);
             }
             catch (WxPayException ex)
@@ -86,8 +101,8 @@ namespace RedPackets.Controllers
                 throw em;
             }
             string[] aa = attach.Split(',');
-            string accountID = aa[0];
-            string orderID = aa[1];
+            string accountID = aa[1];
+            string orderID = aa[2];
             var mongo = new MongoDBTool();
             var accountCollection = mongo.GetMongoCollection<AccountModel>();
 

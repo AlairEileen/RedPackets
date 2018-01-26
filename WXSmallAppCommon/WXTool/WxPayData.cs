@@ -102,7 +102,7 @@ namespace WXSmallAppCommon.WXTool
         * @return 经转换得到的Dictionary
         * @throws WxPayException
         */
-        public SortedDictionary<string, object> FromXml(string xml)
+        public SortedDictionary<string, object> FromXml(string xml,string key=WxPayConfig.KEY)
         {
             if (string.IsNullOrEmpty(xml))
             {
@@ -127,8 +127,10 @@ namespace WXSmallAppCommon.WXTool
                 {
                     return m_values;
                 }
+               
+               
 
-                CheckSign(m_values);//验证签名,不通过会抛异常
+                CheckSign(m_values, key);//验证签名,不通过会抛异常
 
             }
             catch (WxPayException ex)
@@ -223,7 +225,7 @@ namespace WXSmallAppCommon.WXTool
         * 检测签名是否正确
         * 正确返回true，错误抛异常
         */
-        public bool CheckSign(SortedDictionary<string, object> m_values = null)
+        public bool CheckSign(SortedDictionary<string, object> m_values = null,string key=WxPayConfig.KEY)
         {
             string msg = "微信签名验证错误!";
             if (m_values!=null)
@@ -253,7 +255,7 @@ namespace WXSmallAppCommon.WXTool
             string return_sign = GetValue("sign").ToString();
 
             //在本地计算新的签名
-            string cal_sign = MakeSign();
+            string cal_sign = MakeSign(key);
             Console.WriteLine("#####验证Sign:" + cal_sign);
             if (cal_sign == return_sign)
             {

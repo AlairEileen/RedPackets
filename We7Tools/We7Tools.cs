@@ -29,7 +29,7 @@ namespace We7Tools
         public static WxPayData CreateWeChatOrder(this JsApiPay jsApiPay, string uniacid, string body, string attach, string goods_tag)
         {
             ProcessMiniConfig pmc = We7ProcessMiniConfig.GetAllConfig(uniacid);
-            return jsApiPay.GetUnifiedOrderResult(body, attach, goods_tag, pmc.APPID, pmc.MCHID);
+            return jsApiPay.GetUnifiedOrderResult(body, uniacid+","+attach, goods_tag, pmc.APPID, pmc.MCHID,pmc.KEY);
         }
 
         /// <summary>

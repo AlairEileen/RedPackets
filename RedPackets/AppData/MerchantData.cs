@@ -32,6 +32,33 @@ namespace RedPackets.AppData
                 companyCollection.UpdateOne(x => x.uniacid.Equals(uniacid), Builders<CompanyModel>.Update.Set(x => x.QiNiuModel, qiNiuModel));
             }
         }
+
+        internal List<TransactionHistoryViewModel> GetTHList(string uniacid)
+        {
+            var list = mongo.GetMongoCollection<AccountModel>().Find(x => x.uniacid.Equals(uniacid)).ToList();
+            List<TransactionHistoryViewModel> tHList = new List<TransactionHistoryViewModel>();
+            list.ForEach(x=> {
+                if (x.Statements!=null)
+                {
+                    x.Statements.ForEach(y=> {
+                        var thvm = new TransactionHistoryViewModel()
+                        {
+                            AccountAvatar = x.AccountAvatar,
+                            AccountName = x.AccountName,
+                            Gender = x.Gender,
+                            CreateTime=y.CreateTime,
+                            RMB=y.RMB,
+                            StatementName=y.StatementName
+
+                        };
+                        tHList.Add(thvm);
+                    });
+                }
+            });
+            tHList.Sort((x, y) => -x.CreateTime.CompareTo(y.CreateTime));
+            return tHList;
+        }
+
         internal CompanyModel GetCompanyModel(string uniacid)
         {
             var companyModel = mongo.GetMongoCollection<CompanyModel>().Find(x => x.uniacid.Equals(uniacid)).FirstOrDefault();

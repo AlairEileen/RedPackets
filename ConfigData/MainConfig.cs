@@ -6,7 +6,9 @@ namespace ConfigData
 {
     public class MainConfig
     {
-        public const string BaseDir = "/home/project_data/red_packets/";
+        public const bool IsDev = false;
+
+        public const string BaseDir = "/home/project_data/"+(IsDev?"red_packets/": "RedPackets/");
         public const string AvatarDir = "avatar/";
         public const string TempDir = "temp/";
         public const string AlbumDir = "album/";
@@ -17,6 +19,7 @@ namespace ConfigData
 
         public const string MongoDBLineConn = "mongodb://47.94.208.29:27027";
         public const string MongoDBLocalConn = "mongodb://localhost:27027";
-        public const string MongoDBName= "red_packets_wxxcx";
-    }
+        public const string MongoDBName= IsDev?"red_packets_wxxcx": "RedPacketsWeChatMP";
+
+          }
 }

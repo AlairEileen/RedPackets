@@ -38,7 +38,19 @@ namespace Tools
         /// <summary>
         /// 红包已经领取完成
         /// </summary>
-        packets_opened=5001
+        packets_opened=5001,
+        /// <summary>
+        /// 领取人数太多
+        /// </summary>
+        packets_people_too_many=5002,
+        /// <summary>
+        /// 领取人数太少
+        /// </summary>
+        packets_people_none=5003,
+        /// <summary>
+        /// 不是汉字
+        /// </summary>
+        packets_text_no_chinese=5004
     }
   
 }

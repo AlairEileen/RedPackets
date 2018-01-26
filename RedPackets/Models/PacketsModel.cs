@@ -52,6 +52,7 @@ namespace RedPackets.Models
             if (Participants == null)
             {
                 CurrentAccountOpened = false;
+                return;
             }
             CurrentAccountOpened = Participants.Exists(x => x.AccountID.Equals(objectId));
         }
@@ -64,6 +65,8 @@ namespace RedPackets.Models
                 return $"{opened}/{PeopleNum}";
             }
         }
+        [BsonIgnore]
+        public int Top { get; set; }
     }
 
     public class VoicePacketsModel : PacketsModel

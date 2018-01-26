@@ -84,6 +84,9 @@ namespace RedPackets.Controllers
                     default:
                         return JsonResponseModel.ErrorJson;
                 }
+            }catch(ExceptionModel em)
+            {
+                return JsonResponseModel.OtherJson(em.ExceptionParam);
             }
             catch (Exception e)
             {
@@ -98,11 +101,11 @@ namespace RedPackets.Controllers
         /// <param name="uniacid">商户识别ID</param>
         /// <param name="packetsID">订单ID或者红包ID</param>
         /// <returns></returns>
-        public string GetPacketsInfo(string uniacid, string packetsID)
+        public string GetPacketsInfo(string uniacid, string packetsID, string accountID)
         {
             try
             {
-                VoicePacketsModel vpm = thisData.GetPacketsInfo(uniacid, new ObjectId(packetsID));
+                VoicePacketsModel vpm = thisData.GetPacketsInfo(uniacid, new ObjectId(packetsID),new ObjectId(accountID));
                 return new BaseResponseModel<VoicePacketsModel>() { StatusCode = ActionParams.code_ok, JsonData = vpm }.ToJson();
             }
             catch (Exception e)
@@ -152,7 +155,7 @@ namespace RedPackets.Controllers
                 AccountModel account = thisData.GetAccountInfo(uniacid, new ObjectId(accountID));
                 var responseModel = new BaseResponseModel<AccountModel>() { JsonData = account, StatusCode = ActionParams.code_ok };
                 JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings();
-                string[] param = new string[] { "StatusCode", "JsonData", "AccountID", "Balances" };
+                string[] param = new string[] { "StatusCode", "JsonData", "AccountID", "Balances", "SendPacketsMoneyCount", "ReceivePacketsMoneyCount", "CountReceivePacket", "CountSendPacket" };
                 jsonSerializerSettings.ContractResolver = new LimitPropsContractResolver(param);
                 string jsonString = JsonConvert.SerializeObject(responseModel, jsonSerializerSettings);
                 return jsonString;

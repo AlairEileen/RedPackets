@@ -1,7 +1,41 @@
 ﻿@using RedPackets.Views;
+@model List<TransactionHistoryViewModel>
 @{
     ViewConst.SetRoutType(ViewData, RoutType.交易记录);
 }
+<style>
+    .table th, .table td {
+        text-align: center;
+        vertical-align: middle !important;
+    } 
+</style>
 <div class="jumbotron">
     <h1>@RoutType.交易记录.ToString()</h1>
+</div>
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <td>头像</td>
+                <td>昵称</td>
+                <td>性别</td>
+                <td>金额</td>
+                <td>时间</td>
+                <td>描述</td>
+            </tr>
+        </thead>
+        <tbody id="thList">
+            @foreach (var item in Model)
+            {
+            <tr>
+                <td><img class="img-circle" width="70" height="70" src="@item.AccountAvatar"/></td>
+                <td>@item.AccountName</td>
+                <td>@(item.Gender==Tools.Models.Gender.female?"女": item.Gender == Tools.Models.Gender.male?"男":"未知")</td>
+                <td>@item.RMB</td>
+                <td>@item.CreateTime</td>
+                <td>@item.StatementName</td>
+            </tr>
+            }
+        </tbody>
+    </table>
 </div>

@@ -11,6 +11,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http.Headers;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Tools;
 using Tools.Models;
@@ -88,23 +89,24 @@ namespace RedPackets.AppData
             process.Start();
             process.StandardInput.WriteLine("cd /home/webApp");
             process.StandardInput.WriteLine($@"silk_v3_decoder.exe {filePathName} {filePcmName} -Fs_API 8000");
-            string content = process.StandardOutput.ReadToEnd();
-
             process.StandardInput.WriteLine("exit");
             process.WaitForExit();
 
             return new VoiceConverter().AsrData(filePcmName);
         }
+
         /// <summary>
         /// 获取红包信息
         /// </summary>
         /// <param name="uniacid"></param>
         /// <param name="packetsID"></param>
         /// <returns></returns>
-        internal VoicePacketsModel GetPacketsInfo(string uniacid, ObjectId packetsID)
+        internal VoicePacketsModel GetPacketsInfo(string uniacid, ObjectId packetsID, ObjectId accountID)
         {
             var pmCollection = mongo.GetMongoCollection<VoicePacketsModel>();
-            return pmCollection.Find(x => x.uniacid.Equals(uniacid) && x.PacketsID.Equals(packetsID)).FirstOrDefault();
+            var pm = pmCollection.Find(x => x.uniacid.Equals(uniacid) && x.PacketsID.Equals(packetsID)).FirstOrDefault();
+            pm.CheckCurrentAccountOpened(accountID);
+            return pm;
 
         }
 
@@ -117,6 +119,9 @@ namespace RedPackets.AppData
         /// <returns></returns>
         internal async Task<string> CreateVoicePackets(string uniacid, ObjectId accountID, VoicePacketsModel packetsModel)
         {
+            CheckPeopleNum(packetsModel);
+            CheckText(packetsModel.TextCmd);
+
             packetsModel.uniacid = uniacid;
             packetsModel.CreateTime = DateTime.Now;
             return await Task.Run(() =>
@@ -154,6 +159,71 @@ namespace RedPackets.AppData
                 CreateVoicePackets(account, packetsModel, serviceMoney, balance);
                 return new BaseResponseModel2<bool, string>() { StatusCode = ActionParams.code_ok, JsonData = true, JsonData1 = packetsModel.PacketsID.ToString() }.ToJson();
             });
+        }
+        /// <summary>
+        /// 检测口令是否为汉字
+        /// </summary>
+        /// <param name="textCmd"></param>
+        private void CheckText(string text)
+        {
+            string textCmd = (string)text.Clone();
+            textCmd = textCmd.Replace("，", "");
+            textCmd = textCmd.Replace(",", "");
+            textCmd = textCmd.Replace("?", "");
+            textCmd = textCmd.Replace("？", "");
+            textCmd = textCmd.Replace(".", "");
+            textCmd = textCmd.Replace("。", "");
+            textCmd = textCmd.Replace(":", "");
+            textCmd = textCmd.Replace("：", "");
+            textCmd = textCmd.Replace("!", "");
+            textCmd = textCmd.Replace("！", "");
+            textCmd = textCmd.Trim();
+            for (int i = 0; i < textCmd.Length; i++)
+            {
+                if (!Regex.IsMatch(textCmd[i].ToString(), @"[\u4e00-\u9fbb]+$"))
+                {
+                    var e = new ExceptionModel()
+                    {
+                        MethodFullName = System.Reflection.MethodBase.GetCurrentMethod().DeclaringType.FullName,
+                        ExceptionDate = DateTime.Now,
+                        ExceptionParam = ActionParams.packets_text_no_chinese
+                    };
+                    e.Save();
+                    throw e;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 检测人数
+        /// </summary>
+        /// <param name="packetsModel"></param>
+        /// <returns></returns>
+        private bool CheckPeopleNum(VoicePacketsModel packetsModel)
+        {
+            if (packetsModel.PeopleNum == 0)
+            {
+                var e = new ExceptionModel()
+                {
+                    MethodFullName = System.Reflection.MethodBase.GetCurrentMethod().DeclaringType.FullName,
+                    ExceptionDate = DateTime.Now,
+                    ExceptionParam = ActionParams.packets_people_none
+                };
+                e.Save();
+                throw e;
+            }
+            if (packetsModel.Amount.ConvertToMoneyCent() / packetsModel.PeopleNum < 1)
+            {
+                var e = new ExceptionModel()
+                {
+                    MethodFullName = System.Reflection.MethodBase.GetCurrentMethod().DeclaringType.FullName,
+                    ExceptionDate = DateTime.Now,
+                    ExceptionParam = ActionParams.packets_people_too_many
+                };
+                e.Save();
+                throw e;
+            }
+            return true;
         }
 
         /// <summary>
@@ -208,7 +278,7 @@ namespace RedPackets.AppData
         internal List<Statement> GetStatementList(string uniacid, ObjectId accountID)
         {
             var account = GetModelByIDAndUniacID(accountID, uniacid);
-            return account.Statements;
+            return account.Statements.OrderByDescending(x => x.CreateTime).ToList();
         }
 
         /// <summary>
@@ -316,8 +386,13 @@ namespace RedPackets.AppData
             //            { "_id", "$Participants.$.AccountID" },
             //            { "SumMoney",new BsonDocument("$sum", "$Participants.$.MoneyGet" )}
             //        });
-            var list = mongo.GetMongoCollection<VoicePacketsModel>().Find(x => x.uniacid.Equals(uniacid)).SortBy(x => x.Amount).ToList();
-            return list;
+            var list = mongo.GetMongoCollection<VoicePacketsModel>().Find(x => x.uniacid.Equals(uniacid)).ToList();
+            var sortList = list.OrderByDescending(x => x.Amount).ToList();
+            for (int i = 0; i < sortList.Count; i++)
+            {
+                sortList[i].Top = i + 1;
+            }
+            return sortList.Count > 50 ? sortList.GetRange(0, 50) : sortList;
             //return collection.Find(x => x.uniacid.Equals(uniacid)).SortBy(x => x.ReceivePacketsMoneyCount).ToList();
 
         }
@@ -343,30 +418,41 @@ namespace RedPackets.AppData
             var filterSum = filter.Eq(x => x.uniacid, uniacid) & filter.Eq(x => x.PacketsID, packetsID);
             var pmCollection = mongo.GetMongoCollection<VoicePacketsModel>();
             var pm = pmCollection.Find(filterSum).FirstOrDefault();
-
-            if (CompareCmd(word, pm.TextCmd) && NoOpenPackets(accountID, pm))
+            try
             {
-                decimal money = CalcMoney(pm);
-                var account = GetModelByIDAndUniacID(accountID, uniacid);
-                var participant = new Participant()
+
+                if (CompareCmd(word, pm.TextCmd) && NoOpenPackets(accountID, pm))
                 {
-                    AccountAvatar = account.AccountAvatar,
-                    AccountID = account.AccountID,
-                    AccountName = account.AccountName,
-                    CreateTime = DateTime.Now,
-                    MoneyGet = money,
-                    VoiceFileName = fileName
-                };
-                var update = Builders<VoicePacketsModel>.Update.Push(x => x.Participants, participant);
-                pmCollection.UpdateOne(filterSum, update);
-                FileManager.Exerciser(uniacid, filePathName, null).SaveFile();
+                    decimal money = CalcMoney(pm);
+                    var account = GetModelByIDAndUniacID(accountID, uniacid);
+                    var participant = new Participant()
+                    {
+                        AccountAvatar = account.AccountAvatar,
+                        AccountID = account.AccountID,
+                        AccountName = account.AccountName,
+                        CreateTime = DateTime.Now,
+                        MoneyGet = money,
+                        VoiceFileName = fileName
+                    };
+                    if (pm.Participants == null)
+                    {
+                        pmCollection.UpdateOne(filterSum, Builders<VoicePacketsModel>.Update.Set(x => x.Participants, new List<Participant>()));
+                    }
+                    var update = Builders<VoicePacketsModel>.Update.Push(x => x.Participants, participant);
+                    pmCollection.UpdateOne(filterSum, update);
+                    FileManager.Exerciser(uniacid, filePathName, null).SaveFile();
 
-                PushMoneyToBalance(uniacid, account, pm, money);
-                return pmCollection.Find(filterSum).FirstOrDefault();
+                    PushMoneyToBalance(uniacid, account, pm, money);
+                    return pmCollection.Find(filterSum).FirstOrDefault();
+                }
+                else
+                {
+                    return null;
+                }
             }
-            else
+            catch (ExceptionModel em)
             {
-                return null;
+                throw em;
             }
         }
 
@@ -414,9 +500,14 @@ namespace RedPackets.AppData
         /// <returns></returns>
         private bool NoOpenPackets(ObjectId accountID, VoicePacketsModel pm)
         {
+            bool flag = true;
+            if (pm.Participants == null)
+            {
+                return flag;
+            }
             if (pm.Participants.Count >= pm.PeopleNum)
             {
-                return false;
+                flag = false;
                 throw (new ExceptionModel()
                 {
                     ExceptionParam = ActionParams.packets_opened
@@ -424,13 +515,13 @@ namespace RedPackets.AppData
             }
             if (pm.Participants.Exists(x => x.AccountID.Equals(accountID)))
             {
-                return false;
+                flag = false;
                 throw (new ExceptionModel()
                 {
                     ExceptionParam = ActionParams.packets_people_opened
                 });
             }
-            return true;
+            return flag;
         }
 
         /// <summary>
@@ -441,14 +532,22 @@ namespace RedPackets.AppData
         private decimal CalcMoney(VoicePacketsModel pm)
         {
             decimal sumPeopleMoney = 0;
-            pm.Participants.ForEach(x => sumPeopleMoney += x.MoneyGet);
+            if (pm.Participants != null)
+            {
+                pm.Participants.ForEach(x => sumPeopleMoney += x.MoneyGet);
+            }
+
             decimal amount = pm.Amount - sumPeopleMoney;
-            if (pm.Participants.Count + 1 == pm.PeopleNum)
+            if (pm.Participants != null && pm.Participants.Count + 1 == pm.PeopleNum)
             {
                 return amount;
             }
+            if (pm.PeopleNum == 1)
+            {
+                return pm.Amount;
+            }
             int cent = amount.ConvertToMoneyCent();
-            int randomCent = new Random().Next(1, cent - (pm.PeopleNum - pm.Participants.Count));
+            int randomCent = new Random().Next(1, cent - (pm.PeopleNum - (pm.Participants == null ? 0 : pm.Participants.Count)));
             return (decimal)randomCent / (decimal)100;
         }
 
@@ -522,7 +621,7 @@ namespace RedPackets.AppData
             var attach = account.AccountID + "," + weChatOrder.WeChatOrderID.ToString();
             var goods_tag = "创建红包";
             jsApiPay.CreateWeChatOrder(uniacid, body, attach, goods_tag);
-            var param = jsApiPay.GetJsApiParameters();
+            var param = jsApiPay.GetJsApiParameters(We7Tools.Models.We7ProcessMiniConfig.GetAllConfig(uniacid).KEY);
             var wxpm = JsonConvert.DeserializeObject<WXPayModel>(param);
             return wxpm;
         }

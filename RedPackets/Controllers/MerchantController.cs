@@ -24,7 +24,13 @@ namespace RedPackets.Controllers
         // GET: /<controller>/
         public IActionResult Index()
         {
-            return View();
+            List<TransactionHistoryViewModel> thList = GetTHVM();
+            return View(thList);
+        }
+
+        private List<TransactionHistoryViewModel> GetTHVM()
+        {
+          return  thisData.GetTHList(HttpContext.Session.GetUniacID());
         }
 
         public IActionResult Settings()
