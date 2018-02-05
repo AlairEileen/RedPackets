@@ -26,6 +26,10 @@ namespace RedPackets.Models
         /// </summary>
         public decimal ServiceRate { get; set; }
         public string CertFileName { get; set; }
+        /// <summary>
+        /// 是否为正式版
+        /// </summary>
+        public bool IsRelease { get; set; }
     }
     public class QiNiuModel
     {

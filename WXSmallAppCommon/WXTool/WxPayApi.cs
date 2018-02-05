@@ -253,7 +253,7 @@ namespace WXSmallAppCommon.WXTool
 
             //将xml格式的结果转换为对象以返回
             WxPayData result = new WxPayData();
-            result.FromXml(response);
+            result.FromXml(response,key);
 
             ReportCostTime(url, timeCost, result);//测速上报
 

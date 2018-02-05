@@ -131,5 +131,11 @@ namespace RedPackets.AppData
                 }
             }
         }
+
+        internal void SetRelease(string uniacid, bool isRelease)
+        {
+            mongo.GetMongoCollection<CompanyModel>().UpdateOne(x=>x.uniacid.Equals(uniacid),
+                Builders<CompanyModel>.Update.Set(x=>x.IsRelease,isRelease));
+        }
     }
 }

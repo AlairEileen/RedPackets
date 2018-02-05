@@ -81,9 +81,30 @@
         <a class="btn btn-primary" href="ProcessMiniZipDownload">点击下载小程序包</a>
     </div>
 </div>
+<div class="row">
+    <div class="col-sm-6 col-xs-3">
+        <input type="checkbox" id="isRelease" @(Model.IsRelease?"checked":"") /><span class="text-danger">是否为正式版（微信审核通过版本）</span>
+    </div>
+    <div class="col-sm-6 col-xs-3">
+        <button class="btn btn-success" onclick="setRelease()">提交</button>
+    </div>
+</div>
 <br />
 <br />
 <script>
+
+
+    function setRelease() {
+        var flag = $("#isRelease").is(":checked");
+        $.getJSON("SetRelease", { isRelease: flag }, function (data, status) {
+             if (data.StatusCode == @((int)Tools.ActionParams.code_ok)) {
+                            alert("设置成功");
+                         } else {
+                           alert("设置失败");
+                         }
+
+        });
+    }
     function uploadCert() {
         var planGoodsListPic = $("#certFile").get(0);
         var files = planGoodsListPic.files;

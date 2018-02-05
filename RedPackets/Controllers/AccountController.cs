@@ -37,7 +37,7 @@ namespace RedPackets.Controllers
         {
             try
             {
-                BaseResponseModel<AccountModel> responseModel = new BaseResponseModel<AccountModel>();
+                BaseResponseModel2<AccountModel,bool> responseModel = new BaseResponseModel2<AccountModel,bool>();
 
                 //WXSmallAppCommon.Models.WXAccountInfo wXAccount = WXSmallAppCommon.WXInteractions.WXLoginAction.ProcessRequest(code, iv, encryptedData);
                 ///微擎方式
@@ -49,9 +49,10 @@ namespace RedPackets.Controllers
                     responseModel.JsonData = accountCard;
                     stautsCode = ActionParams.code_ok;
                 }
+               responseModel.JsonData1= thisData.CheckRelease(uniacid);
                 responseModel.StatusCode = stautsCode;
                 JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings();
-                string[] param = new string[] { "StatusCode", "JsonData", "AccountID" };
+                string[] param = new string[] { "StatusCode", "JsonData", "AccountID" ,"JsonData1"};
                 jsonSerializerSettings.ContractResolver = new LimitPropsContractResolver(param);
                 string jsonString = JsonConvert.SerializeObject(responseModel, jsonSerializerSettings);
                 return jsonString;
@@ -84,7 +85,8 @@ namespace RedPackets.Controllers
                     default:
                         return JsonResponseModel.ErrorJson;
                 }
-            }catch(ExceptionModel em)
+            }
+            catch (ExceptionModel em)
             {
                 return JsonResponseModel.OtherJson(em.ExceptionParam);
             }
@@ -105,7 +107,7 @@ namespace RedPackets.Controllers
         {
             try
             {
-                VoicePacketsModel vpm = thisData.GetPacketsInfo(uniacid, new ObjectId(packetsID),new ObjectId(accountID));
+                VoicePacketsModel vpm = thisData.GetPacketsInfo(uniacid, new ObjectId(packetsID), new ObjectId(accountID));
                 return new BaseResponseModel<VoicePacketsModel>() { StatusCode = ActionParams.code_ok, JsonData = vpm }.ToJson();
             }
             catch (Exception e)
@@ -127,8 +129,8 @@ namespace RedPackets.Controllers
             try
             {
                 var files = Request.Form.Files;
-                VoicePacketsModel vpm = await thisData.OpenRedPacketsAsync(uniacid, new ObjectId(accountID), new ObjectId(packetsID), files[0]);
-                return new BaseResponseModel<VoicePacketsModel>() { StatusCode = ActionParams.code_ok, JsonData = vpm }.ToJson();
+                ActionParams ap = await thisData.OpenRedPacketsAsync(uniacid, new ObjectId(accountID), new ObjectId(packetsID), files[0]);
+                return ap==ActionParams.code_ok ? GetPacketsInfo(uniacid, packetsID, accountID) : JsonResponseModel.OtherJson(ap);
             }
             catch (ExceptionModel em)
             {
@@ -234,14 +236,14 @@ namespace RedPackets.Controllers
             }
 
         }
-        
+
         /// <summary>
         /// 获取服务费
         /// </summary>
         /// <param name="uniacid">商户识别ID</param>
         /// <param name="amount">金额</param>
         /// <returns></returns>
-        public string GetServiceMoney(string uniacid,decimal amount)
+        public string GetServiceMoney(string uniacid, decimal amount)
         {
             try
             {
@@ -254,14 +256,14 @@ namespace RedPackets.Controllers
                 throw;
             }
         }
-       
+
         /// <summary>
         /// 获取音频文件
         /// </summary>
         /// <param name="uniacid">商户识别ID</param>
         /// <param name="fileName">文件名</param>
         /// <returns></returns>
-        public async Task<IActionResult> GetVoiceFileAsync(string uniacid,string fileName)
+        public async Task<IActionResult> GetVoiceFileAsync(string uniacid, string fileName)
         {
             if (string.IsNullOrEmpty(fileName))
             {
@@ -280,7 +282,7 @@ namespace RedPackets.Controllers
         /// <param name="accountID"></param>
         /// <param name="money"></param>
         /// <returns></returns>
-        public string PushBalance(string uniacid,string accountID,decimal money)
+        public string PushBalance(string uniacid, string accountID, decimal money)
         {
             try
             {
@@ -293,7 +295,7 @@ namespace RedPackets.Controllers
                 return JsonResponseModel.ErrorJson;
             }
         }
-       
+
         /// <summary>
         /// 提现
         /// </summary>
@@ -301,7 +303,7 @@ namespace RedPackets.Controllers
         /// <param name="accountID">用户ID</param>
         /// <param name="money">提现金额</param>
         /// <returns></returns>
-        public string PullBalance(string uniacid,string accountID,decimal money)
+        public string PullBalance(string uniacid, string accountID, decimal money)
         {
             try
             {

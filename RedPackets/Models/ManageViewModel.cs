@@ -12,5 +12,7 @@ namespace RedPackets.Models
         public QiNiuModel QiNiuModel { get; set; }
         public decimal ServiceRate { get; set; }
         public bool UploadedCert { get; set; }
+
+        public bool IsRelease { get; set; }
     }
 }

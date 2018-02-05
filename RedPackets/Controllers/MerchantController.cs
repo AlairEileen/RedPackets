@@ -40,7 +40,7 @@ namespace RedPackets.Controllers
             {
                 companyModel = new CompanyModel() { ProcessMiniInfo = new ProcessMiniInfo(), QiNiuModel = new QiNiuModel() };
             }
-            return View(new ManageViewModel() { UploadedCert = !string.IsNullOrEmpty(companyModel.CertFileName), ProcessMiniInfo = companyModel.ProcessMiniInfo, ServiceRate = companyModel.ServiceRate, QiNiuModel = companyModel.QiNiuModel == null ? new QiNiuModel() : companyModel.QiNiuModel });
+            return View(new ManageViewModel() { IsRelease=companyModel.IsRelease, UploadedCert = !string.IsNullOrEmpty(companyModel.CertFileName), ProcessMiniInfo = companyModel.ProcessMiniInfo, ServiceRate = companyModel.ServiceRate, QiNiuModel = companyModel.QiNiuModel == null ? new QiNiuModel() : companyModel.QiNiuModel });
         }
 
         public IActionResult ProcessMiniZipDownload()
@@ -115,6 +115,20 @@ namespace RedPackets.Controllers
                 e.Save();
                 return JsonResponseModel.ErrorJson;
                 throw;
+            }
+        }
+
+
+        public string SetRelease(bool isRelease)
+        {
+            try
+            {
+                thisData.SetRelease(HttpContext.Session.GetUniacID(), isRelease);
+                return JsonResponseModel.SuccessJson;
+            }
+            catch (Exception)
+            {
+                return JsonResponseModel.ErrorJson;
             }
         }
 

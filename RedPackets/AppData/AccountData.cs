@@ -54,6 +54,11 @@ namespace RedPackets.AppData
             return accountCard;
         }
 
+        internal bool CheckRelease(string uniacid)
+        {
+            return mongo.GetMongoCollection<CompanyModel>().Find(x => x.uniacid.Equals(uniacid)).FirstOrDefault().IsRelease;
+        }
+
         internal Task<string> GetFileWord(string uniacid, IFormFile file, out string filePathName, out string fileName)
         {
             long size = 0;
@@ -410,50 +415,45 @@ namespace RedPackets.AppData
         /// <param name="accountID"></param>
         /// <param name="packetsID"></param>
         /// <returns></returns>
-        internal async Task<VoicePacketsModel> OpenRedPacketsAsync(string uniacid, ObjectId accountID, ObjectId packetsID, IFormFile file)
+        internal async Task<ActionParams> OpenRedPacketsAsync(string uniacid, ObjectId accountID, ObjectId packetsID, IFormFile file)
         {
-            string fileName, filePathName;
-            string word = await GetFileWord(uniacid, file, out filePathName, out fileName);
-            var filter = Builders<VoicePacketsModel>.Filter;
-            var filterSum = filter.Eq(x => x.uniacid, uniacid) & filter.Eq(x => x.PacketsID, packetsID);
-            var pmCollection = mongo.GetMongoCollection<VoicePacketsModel>();
-            var pm = pmCollection.Find(filterSum).FirstOrDefault();
             try
             {
-
-                if (CompareCmd(word, pm.TextCmd) && NoOpenPackets(accountID, pm))
+                string fileName, filePathName;
+                string word = await GetFileWord(uniacid, file, out filePathName, out fileName);
+                var filter = Builders<VoicePacketsModel>.Filter;
+                var filterSum = filter.Eq(x => x.uniacid, uniacid) & filter.Eq(x => x.PacketsID, packetsID);
+                var pmCollection = mongo.GetMongoCollection<VoicePacketsModel>();
+                var pm = pmCollection.Find(filterSum).FirstOrDefault();
+                CompareCmd(word, pm.TextCmd);
+                NoOpenPackets(accountID, pm);
+                decimal money = CalcMoney(pm);
+                var account = GetModelByIDAndUniacID(accountID, uniacid);
+                var participant = new Participant()
                 {
-                    decimal money = CalcMoney(pm);
-                    var account = GetModelByIDAndUniacID(accountID, uniacid);
-                    var participant = new Participant()
-                    {
-                        AccountAvatar = account.AccountAvatar,
-                        AccountID = account.AccountID,
-                        AccountName = account.AccountName,
-                        CreateTime = DateTime.Now,
-                        MoneyGet = money,
-                        VoiceFileName = fileName
-                    };
-                    if (pm.Participants == null)
-                    {
-                        pmCollection.UpdateOne(filterSum, Builders<VoicePacketsModel>.Update.Set(x => x.Participants, new List<Participant>()));
-                    }
-                    var update = Builders<VoicePacketsModel>.Update.Push(x => x.Participants, participant);
-                    pmCollection.UpdateOne(filterSum, update);
-                    FileManager.Exerciser(uniacid, filePathName, null).SaveFile();
-
-                    PushMoneyToBalance(uniacid, account, pm, money);
-                    return pmCollection.Find(filterSum).FirstOrDefault();
-                }
-                else
+                    AccountAvatar = account.AccountAvatar,
+                    AccountID = account.AccountID,
+                    AccountName = account.AccountName,
+                    CreateTime = DateTime.Now,
+                    MoneyGet = money,
+                    VoiceFileName = fileName
+                };
+                if (pm.Participants == null)
                 {
-                    return null;
+                    pmCollection.UpdateOne(filterSum, Builders<VoicePacketsModel>.Update.Set(x => x.Participants, new List<Participant>()));
                 }
+                var update = Builders<VoicePacketsModel>.Update.Push(x => x.Participants, participant);
+                pmCollection.UpdateOne(filterSum, update);
+                FileManager.Exerciser(uniacid, filePathName, null).SaveFile();
+                PushMoneyToBalance(uniacid, account, pm, money);
+                return ActionParams.code_ok;
             }
             catch (ExceptionModel em)
             {
+                return em.ExceptionParam;
                 throw em;
             }
+
         }
 
         /// <summary>
@@ -557,9 +557,9 @@ namespace RedPackets.AppData
         /// <param name="word"></param>
         /// <param name="textCmd"></param>
         /// <returns></returns>
-        private bool CompareCmd(string word, string textCmd)
+        private void CompareCmd(string word, string textCmd)
         {
-            new ExceptionModel() { Content = $@"{word}<compare>{textCmd}" }.Save();
+            //new ExceptionModel() { Content = $@"{word}<compare>{textCmd}" }.Save();
             word = word.Replace("，", "");
             word = word.Replace(",", "");
             word = word.Replace("?", "");
@@ -584,8 +584,13 @@ namespace RedPackets.AppData
             textCmd = textCmd.Replace("！", "");
             textCmd = textCmd.Trim();
             bool eq = textCmd.Equals(word);
-            new ExceptionModel() { Content = $@"{word}<compare:{eq}>{textCmd}" }.Save();
-            return textCmd.Equals(word);
+            if (!eq)
+            {
+                var em = new ExceptionModel() { Content = $@"{word}<compare:{eq}>{textCmd}", ExceptionParam = ActionParams.code_error_verify };
+                em.Save();
+                throw em;
+            }
+
         }
 
         /// <summary>
